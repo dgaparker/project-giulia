@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giulia QV — Vehicle Record</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --red: #c0272d;
+    --red-light: #e03030;
+    --text: #e8e8e8;
+    --text-muted: #888;
+    --text-dim: #555;
+    --green: #3d9970;
+    --amber: #e09e2a;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
+
+  /* Header */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 20px; }
+  .header-badge { background: var(--red); color: #fff; font-weight: 700; font-size: 11px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 3px; }
+  .header-title { font-size: 18px; font-weight: 600; }
+  .header-sub { color: var(--text-muted); font-size: 12px; margin-top: 1px; }
+  .header-stats { margin-left: auto; display: flex; gap: 24px; }
+  .stat { text-align: right; }
+  .stat-value { font-size: 16px; font-weight: 600; }
+  .stat-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 24px; background: var(--surface); }
+  .tab { padding: 12px 20px; cursor: pointer; font-size: 13px; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--red-light); border-bottom-color: var(--red-light); }
+
+  /* Content */
+  .content { padding: 24px; max-width: 1200px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 18px 20px; }
+  .card-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .card-value { font-size: 22px; font-weight: 600; }
+  .card-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .card.accent { border-color: var(--red); }
+  .card.green { border-color: var(--green); }
+  .card.amber { border-color: var(--amber); }
+
+  /* Section heading */
+  .section-title { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+
+  /* Table */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--surface2); font-size: 11px; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted); text-transform: uppercase; padding: 10px 14px; text-align: left; }
+  td { padding: 11px 14px; border-top: 1px solid var(--border); vertical-align: top; }
+  tr.data-row:hover td { background: rgba(255,255,255,0.02); cursor: pointer; }
+  tr.data-row td:first-child { color: var(--text-muted); font-size: 13px; white-space: nowrap; }
+  .type-badge { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; padding: 2px 7px; border-radius: 3px; }
+  .type-service { background: rgba(192,39,45,0.15); color: #e05a60; }
+  .type-tyres { background: rgba(61,153,112,0.15); color: #5db89a; }
+  .type-warranty { background: rgba(100,100,200,0.15); color: #8888dd; }
+  .type-purchase { background: rgba(200,150,50,0.15); color: #d4a050; }
+  .type-ppf { background: rgba(150,100,200,0.15); color: #bb88dd; }
+  .cost-positive { color: var(--text); }
+  .cost-zero { color: var(--text-dim); }
+  .cost-large { color: var(--amber); }
+
+  /* Expandable detail row */
+  tr.detail-row { display: none; }
+  tr.detail-row.open { display: table-row; }
+  tr.detail-row td { background: #161616; padding: 14px 20px 16px 36px; font-size: 13px; color: var(--text-muted); border-top: none; }
+  .detail-notes { white-space: pre-wrap; line-height: 1.7; }
+  .detail-notes strong { color: var(--text); font-weight: 600; }
+  .expand-icon { float: right; color: var(--text-dim); font-size: 10px; margin-top: 2px; }
+
+  /* Warranty cards */
+  .warranty-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .warranty-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+  .warranty-card.active-warranty { border-color: var(--green); }
+  .warranty-card.expired { opacity: 0.6; }
+  .warranty-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .warranty-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .warranty-row:last-child { border-bottom: none; }
+  .warranty-row .label { color: var(--text-muted); }
+  .status-active { color: var(--green); font-weight: 600; }
+  .status-expired { color: var(--text-dim); }
+
+  /* Mods */
+  .mods-list { display: grid; gap: 12px; }
+  .mod-item { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px 20px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+  .mod-name { font-weight: 600; font-size: 14px; }
+  .mod-detail { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .mod-date { font-size: 12px; color: var(--text-dim); text-align: right; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; padding: 5px 12px; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--red); color: var(--text); }
+  .filter-btn.active { background: rgba(192,39,45,0.1); }
+
+  /* Total row */
+  .totals-row { background: var(--surface2); font-weight: 600; }
+  .totals-row td { border-top: 2px solid var(--border); color: var(--text); }
+
+  /* Mod expandable */
+  .mod-expand-body { display: none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .mod-expand-body.open { display: block; }
+  .mod-expand-section { margin-bottom: 14px; }
+  .mod-expand-heading { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .mod-expand-table { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+  .met-row { display: contents; font-size: 13px; }
+  .met-row span:first-child { color: var(--text-muted); }
+  .met-row span:last-child { font-weight: 600; }
+  .mod-expand-list { list-style: none; display: grid; gap: 5px; }
+  .mod-expand-list li { font-size: 13px; color: var(--text-muted); padding-left: 14px; position: relative; }
+  .mod-expand-list li::before { content: "–"; position: absolute; left: 0; color: var(--red); }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .header { flex-wrap: wrap; }
+    .header-stats { margin-left: 0; width: 100%; justify-content: space-between; }
+    th.hide-sm, td.hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="IMG_0083.PNG" alt="Quadrifoglio" style="width:54px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0">
+  <div>
+    <div class="header-badge">ALFA ROMEO</div>
+  </div>
+  <img src="IMG_0365.jpeg" alt="Giulia QV" style="width:72px;height:54px;object-fit:cover;object-position:center 40%;border-radius:4px;border:1px solid var(--border);flex-shrink:0">
+  <div>
+    <div class="header-title">Giulia Quadrifoglio</div>
+    <div class="header-sub">2017 · NQV732 · VIN ZAREAEHV5H7529078 · Vulcano Black (PPF: Dragon's Blood Gloss Metallic)</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat">
+      <div class="stat-value">177,605</div>
+      <div class="stat-label">Last known km</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">177,605 km</div>
+      <div class="stat-label">Last service · Nov 2025</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="total-cost-header">—</div>
+      <div class="stat-label">Total spend</div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('dashboard')">Dashboard</div>
+  <div class="tab" onclick="showTab('history')">Service History</div>
+  <div class="tab" onclick="showTab('warranties')">Warranties</div>
+  <div class="tab" onclick="showTab('mods')">Modifications</div>
+</div>
+
+<div class="content">
+
+  <!-- DASHBOARD -->
+  <div class="tab-panel active" id="tab-dashboard">
+    <div class="cards">
+      <div class="card accent" onclick="editOdometer()" style="cursor:pointer" title="Click to update">
+        <div class="card-label">Current Odometer <span style="color:var(--text-dim);font-size:10px">✎</span></div>
+        <div class="card-value" id="odo-display">177,605 km</div>
+        <input id="odo-input" type="number" style="display:none;background:transparent;border:none;border-bottom:1px solid var(--red);color:var(--text);font-size:22px;font-weight:600;width:100%;outline:none" placeholder="Enter km" onblur="saveOdometer()" onkeydown="if(event.key==='Enter')saveOdometer()">
+        <div class="card-sub" id="odo-date">As at 14 Nov 2025</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Next Service Est.</div>
+        <div class="card-value">182,000 km</div>
+        <div class="card-sub"></div>
+      </div>
+      <div class="card green">
+        <div class="card-label">Active Warranty</div>
+        <div class="card-value" style="font-size:15px">Integrity IABSI409064</div>
+        <div class="card-sub">Incl. suspension — expires 31 Jul 2030</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Spend (all)</div>
+        <div class="card-value" id="dash-total">—</div>
+        <div class="card-sub">Since purchase May 2019</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Servicing &amp; Repairs</div>
+        <div class="card-value" id="dash-service">—</div>
+        <div class="card-sub">Excluding purchase &amp; warranties</div>
+      </div>
+    </div>
+
+    <div class="section-title">Recent Services</div>
+    <div class="table-wrap">
+      <table id="recent-table">
+        <thead><tr><th>Date</th><th>Agent</th><th>km</th><th>Summary</th><th style="text-align:right">Cost</th></tr></thead>
+        <tbody id="recent-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="tab-panel" id="tab-history">
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterHistory('all', this)">All</button>
+      <button class="filter-btn" onclick="filterHistory('Service', this)">Services</button>
+      <button class="filter-btn" onclick="filterHistory('Tyres', this)">Tyres</button>
+      <button class="filter-btn" onclick="filterHistory('Warranty', this)">Warranty</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Agent</th>
+            <th class="hide-sm">km</th>
+            <th>Summary</th>
+            <th style="text-align:right">Cost</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+        <tfoot><tr class="totals-row" id="history-total-row">
+          <td colspan="5" style="text-align:right;color:var(--text-muted);font-size:12px">Total shown</td>
+          <td style="text-align:right" id="history-total-cell"></td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- WARRANTIES -->
+  <div class="tab-panel" id="tab-warranties">
+    <div class="warranty-cards">
+
+      <div class="warranty-card active-warranty">
+        <h3>Integrity Car Care — IABSI409064 <span style="color:var(--green);font-size:12px">● Active</span></h3>
+        <div class="warranty-row"><span class="label">Provider</span><span>Integrity Car Care</span></div>
+        <div class="warranty-row"><span class="label">Policy number</span><span>IABSI409064</span></div>
+        <div class="warranty-row"><span class="label">Cost paid</span><span>$2,907</span></div>
+        <div class="warranty-row"><span class="label">Special inclusion</span><span>Suspension system (approved Jul 2025)</span></div>
+        <div class="warranty-row"><span class="label">Contact</span><span>03 9723 6177</span></div>
+        <div class="warranty-row"><span class="label">Expires</span><span>31 July 2030</span></div>
+        <div class="warranty-row"><span class="label">Status</span><span class="status-active">Active</span></div>
+        <div class="warranty-row"><span class="label">Notes</span><span>Blind spot sensors and DNA switch repaired under this warranty</span></div>
+      </div>
+
+      <div class="warranty-card expired">
+        <h3>AUTO AUTO — VEXA1418 <span style="color:var(--text-dim);font-size:12px">● Expired</span></h3>
+        <div class="warranty-row"><span class="label">Provider</span><span>Australian Warranty Network (AWN)</span></div>
+        <div class="warranty-row"><span class="label">Policy number</span><span>VEXA1418</span></div>
+        <div class="warranty-row"><span class="label">Coverage</span><span>VSC Extension of Mechanical — 36 months</span></div>
+        <div class="warranty-row"><span class="label">Commenced</span><span>30 May 2022</span></div>
+        <div class="warranty-row"><span class="label">Expired</span><span>30 May 2025</span></div>
+        <div class="warranty-row"><span class="label">Premium paid</span><span>$3,220</span></div>
+        <div class="warranty-row"><span class="label">Odometer at application</span><span>102,000 km</span></div>
+        <div class="warranty-row"><span class="label">Includes</span><span>Roadside Assistance 36 months with Extras</span></div>
+        <div class="warranty-row"><span class="label">Status</span><span class="status-expired">Expired 30 May 2025</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODS -->
+  <div class="tab-panel" id="tab-mods">
+    <div class="mods-list">
+
+      <div class="mod-item">
+        <div>
+          <div class="mod-name">PPF Wrap — Inozetek Dragon's Blood Gloss Metallic</div>
+          <div class="mod-detail">Paint protection film applied by PROVINYL. Inozetek Dragon's Blood Gloss Metallic (DPPF711). Factory colour: Vulcano Black.</div>
+        </div>
+        <div class="mod-date">Aug 2025<br>est. ~170,000 km</div>
+      </div>
+
+      <div class="mod-item mod-expandable" onclick="toggleMod('squadra-detail')" style="cursor:pointer">
+        <div>
+          <div class="mod-name">Squadra Massimo Tune — Engine Remap <span class="expand-icon" id="squadra-icon">▼</span></div>
+          <div class="mod-detail">Mapping Squadra Massimo — ECU performance tune. Installed at Automoda, Five Dock.</div>
+          <div class="mod-expand-body" id="squadra-detail">
+            <div class="mod-expand-section">
+              <div class="mod-expand-heading">Power &amp; Torque</div>
+              <div class="mod-expand-table">
+                <div class="met-row"><span>Power (stock)</span><span>380 kW</span></div>
+                <div class="met-row"><span>Power (tuned)</span><span>~418–425 kW</span></div>
+                <div class="met-row"><span>Torque (stock)</span><span>600 Nm</span></div>
+                <div class="met-row"><span>Torque (tuned)</span><span>670–720 Nm</span></div>
+              </div>
+            </div>
+            <div class="mod-expand-section">
+              <div class="mod-expand-heading">Features included</div>
+              <ul class="mod-expand-list">
+                <li>Enhanced throttle response across all DNA modes</li>
+                <li>Torque limitation removed in Dynamic mode</li>
+                <li>Increased torque in Advanced Efficiency mode</li>
+                <li>Modified exhaust valve opening strategy</li>
+                <li>Cylinder deactivation disabled</li>
+                <li>Start/stop system disabled</li>
+                <li>Improved cold start and after-start running behaviour</li>
+                <li>Intake temperature regulation optimised</li>
+                <li>RPM limiter unchanged</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="mod-date">Aug 2022<br>112,681 km</div>
+      </div>
+
+      <div class="mod-item">
+        <div>
+          <div class="mod-name">Exhaust Valve Modification</div>
+          <div class="mod-detail">Open exhaust valves — modified system. Carried out at Automoda, Five Dock.</div>
+        </div>
+        <div class="mod-date">May 2022<br>106,784 km</div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+const records = [
+  {
+    date: "2019-05-10", type: "Purchase", agent: "Northshore Auto Centre", km: 15524,
+    summary: "Vehicle purchased",
+    cost: 89201,
+    notes: "Second-hand purchase of 2017 Alfa Romeo Giulia Quadrifoglio (QV), Vulcano Black. Engine: 2.9L V6 BiTurbo. Transmission: Automatic. Registration: NQV732. VIN: ZAREAEHV5H7529078. Original delivery date: 31 March 2017."
+  },
+  {
+    date: "2019-05-10", type: "Warranty", agent: "Eric Insurance", km: 15524,
+    summary: "Initial warranty taken out",
+    cost: 1700,
+    notes: "Warranty policy taken out at time of purchase via Eric Insurance (Formerly Avea Insurance)."
+  },
+  {
+    date: "2019-11-11", type: "Service", agent: "McCarroll's Alfa Romeo", km: 29710,
+    summary: "30km/24mth service",
+    cost: 1095,
+    notes: "<strong>Work carried out:</strong>\nFull service to manufacturer specifications.\nReplaced: engine oil & filter, spark plugs, brake & clutch fluid.\nChecked: cooling system, air cleaner element, exhaust, all oil levels, steering & suspension, tyre condition, front & rear brakes, battery electrolyte & fluid, lights & wipers, seat belts, parking brake, fuel lines.\nRoad test carried out.\n\n<strong>Parts replaced:</strong>\nFiltering element (x2), sealing gasket, windshield washer cleaner, air filter, Tutela Brake Fluid Extreme HT, Selenia Digitek 0W-40 (4L)."
+  },
+  {
+    date: "2020-04-17", type: "Service", agent: "McCarroll's Alfa Romeo", km: 45108,
+    summary: "45,000km/36mth service",
+    cost: 715.65,
+    notes: "<strong>Work carried out:</strong>\nFull service to manufacturer specifications.\nReplaced: engine oil & filter.\nChecked: battery condition & terminals, wiper blades, windscreen washer, accessory drive belt condition, all fluid levels, bonnet/boot/door locks, tyre condition & pressure, exhaust & emissions, front & rear brakes (ceramic), brake discs.\nDiagnostic socket scan via wiTECH.\n\n<strong>Note:</strong> Exhaust rattle investigated separately — silencer on order (warranty)."
+  },
+  {
+    date: "2020-05-20", type: "Warranty", agent: "McCarroll's Alfa Romeo", km: 47427,
+    summary: "Exhaust silencer replacement (warranty)",
+    cost: 0,
+    notes: "<strong>Work carried out:</strong>\nConfirmed noise in exhaust on cold start.\nInstalled outstanding part — Silencer (part #32332).\nCovered fully under warranty. Invoice total: $0."
+  },
+  {
+    date: "2020-11-13", type: "Service", agent: "McCarroll's Alfa Romeo", km: 63973,
+    summary: "60,000km/48mth service",
+    cost: 1515.30,
+    notes: "<strong>Work carried out:</strong>\nFull 60,000km/48-month service.\nReplaced: engine oil & filter, brake fluid, spark plugs (6), pollen/cabin filter, engine & filtering elements.\nA/C anti-bacterial treatment (ECO Air Service Kit).\nChecked: battery, wiper blades, all fluid levels, tyre condition/pressure, exhaust & emissions, front & rear brakes (carbon ceramic), drive belt condition.\n\n<strong>Note from service:</strong> Drive belt noted — accessory drive belt not in stock; will require separate booking. (Belt subsequently replaced at next service.)"
+  },
+  {
+    date: "2021-01-11", type: "Service", agent: "McCarroll's Alfa Romeo (Eric Insurance claim)", km: 65068,
+    summary: "Engine light — BOV connector fault",
+    cost: 977.25,
+    notes: "<strong>Fault found:</strong>\nEngine check light on. Found turbo bypass 2 open circuit. Connector tension loose on bank 2 BOV (blow-off valve).\n\n<strong>Work carried out:</strong>\nReplaced connector for bank 2 BOV. Fitted cover as per service information.\n\n<strong>Recommendation:</strong>\nRebook to replace drive belt.\n\nClaimed through Eric Insurance."
+  },
+  {
+    date: "2021-01-21", type: "Tyres", agent: "Tyrepower Hornsby", km: 68767,
+    summary: "1× Michelin Pilot Super Sport",
+    cost: 515,
+    notes: "Single tyre replacement.\nMichelin 285/30R19 98Y XL TL Pilot Super Sport (MO).\nIncludes: balancing, fitting, new valve, disposal."
+  },
+  {
+    date: "2021-05-17", type: "Service", agent: "McCarroll's Alfa Romeo (Eric Insurance claim)", km: 78052,
+    summary: "75,000km service + drive belt + radiator",
+    cost: 1432,
+    notes: "<strong>Work carried out:</strong>\nFull 75,000km/60-month capped-price service.\nReplaced: engine oil & filter, serpentine drive belt (drained, refilled & bled intercooler cooling system).\nEngine radiator leaking — replaced radiator + Selenia Paraflu coolant (2L).\nClay wash and polish.\n\n<strong>Note:</strong> Wiper rubbers replaced (worn). Radiator replacement covered by insurance claim through Eric Insurance.\n\n<strong>Recommendation:</strong> Radiator — monitor coolant."
+  },
+  {
+    date: "2021-09-24", type: "Service", agent: "McCarroll's Alfa Romeo (Eric Insurance claim)", km: 89571,
+    summary: "90,000km service + all brakes replaced",
+    cost: 6378.75,
+    notes: "<strong>Work carried out:</strong>\nFull 90,000km/72-month service.\nAll brake pads and discs replaced — front and rear (total parts: $4,720 for discs and pad sets).\nBrake fluid replaced.\nA/C anti-bacterial treatment.\nWiper rubbers replaced.\n\n<strong>Parts:</strong>\nFront brake discs (×2), front brake pad set (×1), rear brake discs (×2), rear brake pad set (×1), wiper blade (×1).\n\nLarge service due to full brake renewal. Claimed in part through Eric Insurance."
+  },
+  {
+    date: "2021-10-01", type: "Tyres", agent: "Tyrepower Hornsby", km: 90019,
+    summary: "2× Michelin Pilot Sport 4S",
+    cost: 1050,
+    notes: "Two tyre replacement.\nMichelin 285/30R19 98Y Pilot Sport 4S.\nUnit price: $525 each."
+  },
+  {
+    date: "2022-04-20", type: "Service", agent: "McCarroll's Alfa Romeo (Eric Insurance claim)", km: null,
+    summary: "Tow hook cover — paint",
+    cost: 178.65,
+    notes: "Tow plug sourced and painted in Vulcano Black to match vehicle.\nClaimed through Eric Insurance / warranty."
+  },
+  {
+    date: "2022-05-03", type: "Service", agent: "Automoda (Five Dock)", km: 106784,
+    summary: "Full service + exhaust valve mod + diff oils",
+    cost: 2866,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, automatic transmission oil, diff oil, torque vectoring oil (×2), axle torque vectoring oil.\nFlushed braking system & replaced fluid.\nChecked exhaust system, cooling, steering, suspension, fuel tank, battery & fuses, drive belts, exhaust manifold, tyre condition & pressure, air con, lights, wipers.\n\n<strong>Modifications:</strong>\nExhaust valve modification — open exhaust valves (modified system).\nFuel additive, engine treatment applied.\nFront bumper loose (O/S top) — repaired mounts.\nBCM fuel gauge update, HVAC air con update, exhaust valve mod (parts).\n\n<strong>Faults noted:</strong>\nFront lower control arm bushes required.\nN/S inner parking sensor inoperative.\nMarks on rear bumper.\nN/S/F rim incorrect colour.\nFront tyres required.\n\n<strong>Note:</strong> First service at Automoda after leaving McCarroll's."
+  },
+  {
+    date: "2022-08-05", type: "Service", agent: "Automoda (Five Dock)", km: 112681,
+    summary: "Front tyres + Squadra Massimo tune + rim repaint",
+    cost: 4488,
+    notes: "<strong>Work carried out:</strong>\nFront tyres replaced: 2× Michelin PS4S, fitted, balanced & disposal.\nFront & rear wheel alignment.\nN/S/F rim stripped & repainted.\nMapping Squadra — Massimo ECU tune installed.\nO/S/F bumper top secured.\nO/S/R quarter window trim secured.\nRego inspection — carried out, no charge.\n\n<strong>Parts:</strong>\nMapping Squadra Massimo: $2,200 · Rim repaint: $450 · Tyres: $1,400 · Alignments: $138 combined."
+  },
+  {
+    date: "2022-11-23", type: "Service", agent: "Automoda (Five Dock)", km: 122644,
+    summary: "Full service + spark plugs",
+    cost: 1776.75,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, 6× spark plugs (60,000km interval), pollen filter, brake fluid flushed.\nChecked gearbox oil, all brakes, suspension, exhaust, cooling, drive belts, tyre condition, air con, battery.\n\n<strong>Faults noted:</strong>\nMinor noise from front shocks (cold) — monitored.\nEngine/rear chain noise at 3,000rpm — monitored.\nFront spoiler mounts damaged — noted for repair."
+  },
+  {
+    date: "2023-05-10", type: "Service", agent: "Automoda (Five Dock)", km: 134929,
+    summary: "Full service + diff & torque vectoring oils",
+    cost: 1814.75,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, diff oil (LSD), N/S & O/S torque vectoring oil, exhaust mount replaced.\nBrake fluid flushed & replaced.\nChecked all systems: gearbox, suspension, drive shafts, fuel lines, exhaust, cooling, battery, all drive belts, lights, wipers.\n\n<strong>Minor issues noted:</strong>\nN/S/F sway bar link on order.\nDNA switch required — noted for future repair.\nO/S/F rim minor buckle — noted."
+  },
+  {
+    date: "2023-05-25", type: "Tyres", agent: "Tyrepower Hornsby", km: 136325,
+    summary: "2× Michelin Pilot Sport 4S",
+    cost: 1050,
+    notes: "Two tyre replacement — rear axle.\nMichelin 285/30R19 98Y Pilot Sport 4S.\nUnit price: $525 each.\n(Puncture repair on one tyre was declined — tyre replaced instead.)"
+  },
+  {
+    date: "2023-10-18", type: "Service", agent: "Automoda (Five Dock)", km: 148283,
+    summary: "Full service + battery + sway bar link",
+    cost: 2611.50,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, brake fluid, diff oil, torque vectoring oil.\nBattery replaced (flat battery found — DIN 75LH AGM).\nN/S/F sway bar link replaced.\nWiper blades (new style) fitted.\nN/S/R radio amp cover fitted (Alfa cover mod).\n\n<strong>Warranty items (no charge):</strong>\nN/S mirror blind spot sensor inoperative — replaced under warranty. ✓ Resolved\nN/S/F inner parking sensor inoperative — replaced under warranty. ✓ Resolved\n\n<strong>Still outstanding at this visit:</strong>\nN/S blind spot sensor — ordered (replaced at next visit)."
+  },
+  {
+    date: "2024-04-15", type: "Service", agent: "Automoda (Five Dock)", km: 162558,
+    summary: "Main belt replacement + spoiler repair + warranty items",
+    cost: 4462.35,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, diff oil, torque vectoring oil, brake fluid flushed.\nMain (serpentine) belt & tensioner replaced.\nFront spoiler — modified & braced; front bar side brackets repaired.\nN/S/R blind spot sensor replaced & calibrated — warranty. ✓ Resolved\nN/S/F inner parking sensor replaced — warranty. ✓ Resolved\n\n<strong>Note:</strong> Two invoices this date (belt/spoiler work + full service)."
+  },
+  {
+    date: "2024-07-03", type: "Service", agent: "Automoda (Five Dock)", km: 165358,
+    summary: "Wheel repair + rim touchup + rego",
+    cost: 984,
+    notes: "<strong>Work carried out:</strong>\nO/S/F wheel repaired & painted.\nRims touched up ×3.\nEngine ECU cover fitted.\nRego inspection carried out.\nN/S blind spot sensor replaced & calibrated — warranty. ✓ Resolved"
+  },
+  {
+    date: "2025-04-07", type: "Service", agent: "Automoda (Five Dock)", km: 171138,
+    summary: "Full service",
+    cost: 1480,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, brake fluid.\nAll systems checked: gearbox, brakes, suspension, exhaust, cooling, battery, drive belts, air con, lights, wipers.\nECU checks: no faults. Software up to date.\nParking sensors checked.\n\n<strong>Issues noted (subsequently resolved):</strong>\nDNA switch spring loose — replacement switch ordered. → Replaced under warranty at next service. ✓\nShocks noise cold only — monitored.\nMinor coolant residue on expansion tank plug connector — monitored.\nFront bumper mount missing N/S — referred to ProVinyl. → Repaired by ProVinyl. ✓\n\n<strong>Advisory:</strong>\nCheck front tyres in August for registration."
+  },
+  {
+    date: "2025-07-31", type: "Warranty", agent: "Integrity Car Care", km: null,
+    summary: "Integrity warranty taken out — IABSI409064",
+    cost: 2907,
+    notes: "Extended warranty policy taken out with Integrity Car Care.\nPolicy number: IABSI409064.\nSpecial inclusion: Suspension System (confirmed in writing, July 2025).\nContact: 03 9723 6177.\n\nItems repaired under this warranty:\n• Blind spot sensors ✓\n• DNA switch ✓"
+  },
+  {
+    date: "2025-08-15", type: "PPF", agent: "PROVINYL", km: null,
+    summary: "Paint protection film — Inozetek DPPF711",
+    cost: 8486.40,
+    notes: "Paint protection film applied by PROVINYL.\nProduct: Inozetek Dragon's Blood Gloss Metallic (DPPF711).\nFactory colour: Vulcano Black.\n"
+  },
+  {
+    date: "2025-11-14", type: "Service", agent: "Automoda (Five Dock)", km: 177605,
+    summary: "Full service + front tyres + alignment",
+    cost: 2744.85,
+    notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, brake fluid.\nFront tyres replaced: 2× Michelin PS4S fitted, balanced & disposed — $1,100.\nFront & rear wheel alignment — $165.\nAll systems checked: gearbox, brakes, suspension, exhaust, cooling, battery, drive belts, air con, lights, wipers.\nECU checks: no faults detected, software up to date.\n\n<strong>Warranty items resolved this visit:</strong>\nDNA selector switch — replaced under warranty. ✓\nN/S/R blind spot sensor — already replaced. ✓\n\n<strong>Advisory:</strong>\nBrake pad warning light came on — sensors removed, 5,000km minimum left.\nFront bumper mount N/S — repaired by ProVinyl. ✓"
+  }
+];
+
+// Utility
+function fmt(n) {
+  if (n == null || n === 0) return '<span class="cost-zero">—</span>';
+  const s = '$' + n.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  return n >= 3000 ? `<span class="cost-large">${s}</span>` : `<span class="cost-positive">${s}</span>`;
+}
+function fmtPlain(n) {
+  if (!n) return '—';
+  return '$' + n.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+function fmtDate(d) {
+  const [y,m,day] = d.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
+}
+function typeBadge(t) {
+  const map = {Service:'type-service',Tyres:'type-tyres',Warranty:'type-warranty',Purchase:'type-purchase',PPF:'type-ppf'};
+  return `<span class="type-badge ${map[t]||'type-service'}">${t.toUpperCase()}</span>`;
+}
+
+// Totals
+function calcTotals() {
+  let total = 0, service = 0;
+  records.forEach(r => {
+    total += r.cost || 0;
+    if (!['Purchase','Warranty','PPF'].includes(r.type)) service += r.cost || 0;
+  });
+  return {total, service};
+}
+
+// Dashboard recent
+function buildRecent() {
+  const tbody = document.getElementById('recent-body');
+  const recent = [...records].reverse().filter(r => r.type === 'Service' || r.type === 'Tyres').slice(0, 5);
+  tbody.innerHTML = recent.map(r => `
+    <tr>
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.agent}</td>
+      <td>${r.km ? r.km.toLocaleString() : '—'}</td>
+      <td>${r.summary}</td>
+      <td style="text-align:right">${fmt(r.cost)}</td>
+    </tr>
+  `).join('');
+}
+
+// History
+let currentFilter = 'all';
+function buildHistory(filter) {
+  const tbody = document.getElementById('history-body');
+  const filtered = (filter === 'all' ? records : records.filter(r => r.type === filter)).slice().reverse();
+  let totalFiltered = 0;
+  tbody.innerHTML = filtered.map((r, i) => {
+    totalFiltered += r.cost || 0;
+    const rid = `detail-${i}`;
+    return `
+      <tr class="data-row" onclick="toggleDetail('${rid}')">
+        <td>${fmtDate(r.date)}</td>
+        <td>${typeBadge(r.type)}</td>
+        <td>${r.agent}</td>
+        <td class="hide-sm">${r.km ? r.km.toLocaleString() : '—'}</td>
+        <td>${r.summary} <span class="expand-icon">▼</span></td>
+        <td style="text-align:right">${fmt(r.cost)}</td>
+      </tr>
+      <tr class="detail-row" id="${rid}">
+        <td colspan="6"><div class="detail-notes">${r.notes}</div></td>
+      </tr>
+    `;
+  }).join('');
+  document.getElementById('history-total-cell').innerHTML = fmt(totalFiltered);
+}
+function toggleDetail(id) {
+  const row = document.getElementById(id);
+  row.classList.toggle('open');
+}
+function filterHistory(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildHistory(type);
+}
+
+// Odometer editing
+function editOdometer() {
+  const display = document.getElementById('odo-display');
+  const input = document.getElementById('odo-input');
+  const raw = (localStorage.getItem('giulia-odo') || '177605');
+  input.value = raw;
+  display.style.display = 'none';
+  input.style.display = 'block';
+  input.focus();
+  input.select();
+}
+function saveOdometer() {
+  const input = document.getElementById('odo-input');
+  const display = document.getElementById('odo-display');
+  const dateEl = document.getElementById('odo-date');
+  const val = parseInt(input.value);
+  if (!isNaN(val) && val > 0) {
+    const now = new Date();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dateStr = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    localStorage.setItem('giulia-odo', val);
+    localStorage.setItem('giulia-odo-date', dateStr);
+    display.textContent = val.toLocaleString('en-AU') + ' km';
+    dateEl.textContent = 'As at ' + dateStr;
+    document.getElementById('total-cost-header').parentElement.previousElementSibling.querySelector('.stat-value').textContent = val.toLocaleString('en-AU');
+  }
+  input.style.display = 'none';
+  display.style.display = 'block';
+}
+function loadOdometer() {
+  const val = localStorage.getItem('giulia-odo');
+  const date = localStorage.getItem('giulia-odo-date');
+  if (val) {
+    document.getElementById('odo-display').textContent = parseInt(val).toLocaleString('en-AU') + ' km';
+    document.getElementById('total-cost-header').parentElement.previousElementSibling.previousElementSibling.querySelector('.stat-value').textContent = parseInt(val).toLocaleString('en-AU');
+  }
+  if (date) document.getElementById('odo-date').textContent = 'As at ' + date;
+}
+
+// Mod expand
+function toggleMod(id) {
+  const body = document.getElementById(id);
+  const icon = document.getElementById(id.replace('-detail', '-icon'));
+  body.classList.toggle('open');
+  if (icon) icon.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+// Tab switching
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Init
+window.onload = function() {
+  loadOdometer();
+  const {total, service} = calcTotals();
+  document.getElementById('dash-total').textContent = fmtPlain(total);
+  document.getElementById('dash-service').textContent = fmtPlain(service);
+  document.getElementById('total-cost-header').textContent = fmtPlain(total);
+  buildRecent();
+  buildHistory('all');
+};
+</script>
+</body>
+</html>
