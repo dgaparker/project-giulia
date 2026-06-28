@@ -231,7 +231,7 @@
             <span class="odo-unit">km</span>
           </div>
         </div>
-        <input id="odo-input" type="number" style="display:none;background:transparent;border:none;border-bottom:1px solid var(--red);color:var(--text);font-size:22px;font-weight:600;width:100%;outline:none" placeholder="Enter km" onblur="saveOdometer()" onkeydown="if(event.key==='Enter')saveOdometer()">
+        <input id="odo-input" type="number" style="display:none;background:transparent;border:none;border-bottom:1px solid var(--red);color:var(--text);font-size:22px;font-weight:600;width:100%;outline:none" placeholder="Enter km" onblur="saveOdometer()" onchange="saveOdometer()" onkeydown="if(event.key==='Enter')saveOdometer()">
         <div class="card-sub" id="odo-date">As at 14 Nov 2025</div>
       </div>
       <div class="card">
