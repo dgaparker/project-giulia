@@ -48,6 +48,59 @@
   .card-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
   .card-value { font-size: 22px; font-weight: 600; }
   .card-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Drum odometer */
+  .odo-wrap { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+  .odo-housing {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    background: #060606;
+    border: 1.5px solid var(--red);
+    border-radius: 5px;
+    padding: 4px 8px;
+    box-shadow: inset 0 3px 12px rgba(0,0,0,0.85), inset 0 -3px 12px rgba(0,0,0,0.85), 0 0 0 1px #1a0000;
+    position: relative;
+    overflow: hidden;
+  }
+  .odo-housing::before, .odo-housing::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 8px;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .odo-housing::before { top: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.75), transparent); }
+  .odo-housing::after  { bottom: 0; background: linear-gradient(to top,   rgba(0,0,0,0.75), transparent); }
+  .drum { width: 20px; height: 34px; overflow: hidden; position: relative; }
+  .drum-strip {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    transform: translateY(0);
+    will-change: transform;
+  }
+  .drum-strip span {
+    display: block;
+    height: 34px;
+    line-height: 34px;
+    text-align: center;
+    font-size: 23px;
+    font-weight: 700;
+    color: #f2eeea;
+    font-variant-numeric: tabular-nums;
+  }
+  .odo-comma {
+    color: var(--red);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 34px;
+    padding: 4px 1px 0;
+    align-self: center;
+    z-index: 4;
+  }
+  .odo-unit { color: var(--text-muted); font-size: 12px; font-weight: 500; letter-spacing: 0.5px; }
+
   .card.accent { border-color: var(--red); }
   .card.green { border-color: var(--green); }
   .card.amber { border-color: var(--amber); }
@@ -172,7 +225,12 @@
     <div class="cards">
       <div class="card accent" onclick="editOdometer()" style="cursor:pointer" title="Click to update">
         <div class="card-label">Current Odometer <span style="color:var(--text-dim);font-size:10px">✎</span></div>
-        <div class="card-value" id="odo-display">177,605 km</div>
+        <div id="odo-display">
+          <div class="odo-wrap">
+            <div class="odo-housing" id="odo-housing"></div>
+            <span class="odo-unit">km</span>
+          </div>
+        </div>
         <input id="odo-input" type="number" style="display:none;background:transparent;border:none;border-bottom:1px solid var(--red);color:var(--text);font-size:22px;font-weight:600;width:100%;outline:none" placeholder="Enter km" onblur="saveOdometer()" onkeydown="if(event.key==='Enter')saveOdometer()">
         <div class="card-sub" id="odo-date">As at 14 Nov 2025</div>
       </div>
@@ -555,11 +613,52 @@ function filterHistory(type, btn) {
   buildHistory(type);
 }
 
-// Odometer editing
+// Drum odometer
+var ODO_H = 34;
+
+function renderOdometer(value, animate) {
+  var housing = document.getElementById('odo-housing');
+  if (!housing) return;
+  var digits = String(parseInt(value) || 177605).padStart(6, '0').split('');
+  housing.innerHTML = '';
+  digits.forEach(function(d, i) {
+    if (i === 3) {
+      var sep = document.createElement('div');
+      sep.className = 'odo-comma';
+      sep.textContent = ',';
+      housing.appendChild(sep);
+    }
+    var drum = document.createElement('div');
+    drum.className = 'drum';
+    var strip = document.createElement('div');
+    strip.className = 'drum-strip';
+    for (var n = 0; n <= 9; n++) {
+      var span = document.createElement('span');
+      span.textContent = n;
+      strip.appendChild(span);
+    }
+    drum.appendChild(strip);
+    housing.appendChild(drum);
+    var target = parseInt(d) * ODO_H;
+    if (animate) {
+      var delay = (5 - i) * 55;
+      var dur = (0.75 + i * 0.13).toFixed(2);
+      setTimeout((function(s, t, duration) {
+        return function() {
+          s.style.transition = 'transform ' + duration + 's cubic-bezier(0.15, 0.8, 0.3, 1.0)';
+          s.style.transform = 'translateY(-' + t + 'px)';
+        };
+      })(strip, target, dur), 100 + delay);
+    } else {
+      strip.style.transform = 'translateY(-' + target + 'px)';
+    }
+  });
+}
+
 function editOdometer() {
-  const display = document.getElementById('odo-display');
-  const input = document.getElementById('odo-input');
-  const raw = (localStorage.getItem('giulia-odo') || '177605');
+  var display = document.getElementById('odo-display');
+  var input = document.getElementById('odo-input');
+  var raw = localStorage.getItem('giulia-odo') || '177605';
   input.value = raw;
   display.style.display = 'none';
   input.style.display = 'block';
@@ -567,29 +666,33 @@ function editOdometer() {
   input.select();
 }
 function saveOdometer() {
-  const input = document.getElementById('odo-input');
-  const display = document.getElementById('odo-display');
-  const dateEl = document.getElementById('odo-date');
-  const val = parseInt(input.value);
+  var input = document.getElementById('odo-input');
+  var display = document.getElementById('odo-display');
+  var dateEl = document.getElementById('odo-date');
+  var val = parseInt(input.value);
   if (!isNaN(val) && val > 0) {
-    const now = new Date();
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const dateStr = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    var now = new Date();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var dateStr = now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
     localStorage.setItem('giulia-odo', val);
     localStorage.setItem('giulia-odo-date', dateStr);
-    display.textContent = val.toLocaleString('en-AU') + ' km';
     dateEl.textContent = 'As at ' + dateStr;
     document.getElementById('total-cost-header').parentElement.previousElementSibling.querySelector('.stat-value').textContent = val.toLocaleString('en-AU');
+    input.style.display = 'none';
+    display.style.display = '';
+    renderOdometer(val, true);
+  } else {
+    input.style.display = 'none';
+    display.style.display = '';
   }
-  input.style.display = 'none';
-  display.style.display = 'block';
 }
 function loadOdometer() {
-  const val = localStorage.getItem('giulia-odo');
-  const date = localStorage.getItem('giulia-odo-date');
-  if (val) {
-    document.getElementById('odo-display').textContent = parseInt(val).toLocaleString('en-AU') + ' km';
-    document.getElementById('total-cost-header').parentElement.previousElementSibling.previousElementSibling.querySelector('.stat-value').textContent = parseInt(val).toLocaleString('en-AU');
+  var stored = localStorage.getItem('giulia-odo');
+  var val = stored ? parseInt(stored) : 177605;
+  var date = localStorage.getItem('giulia-odo-date');
+  renderOdometer(val, true);
+  if (stored) {
+    document.getElementById('total-cost-header').parentElement.previousElementSibling.previousElementSibling.querySelector('.stat-value').textContent = val.toLocaleString('en-AU');
   }
   if (date) document.getElementById('odo-date').textContent = 'As at ' + date;
 }
