@@ -182,6 +182,11 @@
   .delete-record-btn { background: none; border: none; color: var(--text-dim); font-size: 14px; cursor: pointer; padding: 0 4px; opacity: 0.5; }
   .delete-record-btn:hover { color: var(--red); opacity: 1; }
 
+  /* Car wash tab */
+  .type-wash { background: rgba(50,130,200,0.15); color: #6aabdd; }
+  .type-detail { background: rgba(192,39,45,0.15); color: #e05a60; }
+  .type-ppfwash { background: rgba(150,100,200,0.15); color: #bb88dd; }
+
   /* Mod expandable */
   .mod-expand-body { display: none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
   .mod-expand-body.open { display: block; }
@@ -234,6 +239,7 @@
 <div class="tabs">
   <div class="tab active" onclick="showTab('dashboard')">Dashboard</div>
   <div class="tab" onclick="showTab('history')">Service History</div>
+  <div class="tab" onclick="showTab('wash')">Car Wash</div>
   <div class="tab" onclick="showTab('warranties')">Warranties</div>
   <div class="tab" onclick="showTab('mods')">Modifications</div>
 </div>
@@ -273,6 +279,11 @@
         <div class="card-label">Servicing &amp; Repairs</div>
         <div class="card-value" id="dash-service">—</div>
         <div class="card-sub">Excluding purchase &amp; warranties</div>
+      </div>
+      <div class="card" onclick="showTab('wash')" style="cursor:pointer" title="Go to Car Wash">
+        <div class="card-label">Last Washed</div>
+        <div class="card-value" id="last-washed-date" style="font-size:16px">—</div>
+        <div class="card-sub" id="last-washed-sub"></div>
       </div>
     </div>
 
@@ -368,6 +379,64 @@
           <td colspan="5" style="text-align:right;color:var(--text-muted);font-size:12px">Total shown</td>
           <td style="text-align:right" id="history-total-cell"></td>
         </tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- CAR WASH -->
+  <div class="tab-panel" id="tab-wash">
+    <div class="filter-bar">
+      <button class="add-btn" onclick="toggleAddWash()">+ Add Wash</button>
+    </div>
+    <div class="add-record-panel" id="add-wash-panel">
+      <div class="add-record-grid">
+        <div class="add-field">
+          <label>Date</label>
+          <input type="date" id="aw-date">
+        </div>
+        <div class="add-field">
+          <label>Type</label>
+          <select id="aw-type">
+            <option>Hand Wash</option>
+            <option>Full Detail</option>
+            <option>Machine Wash</option>
+            <option>PPF Wash</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="add-field">
+          <label>By / Where</label>
+          <input type="text" id="aw-by" list="aw-by-list">
+          <datalist id="aw-by-list">
+            <option value="Self">
+          </datalist>
+        </div>
+        <div class="add-field">
+          <label>Cost ($)</label>
+          <input type="text" id="aw-cost" placeholder="0.00">
+        </div>
+        <div class="add-field" style="grid-column:span 2">
+          <label>Notes (optional)</label>
+          <input type="text" id="aw-notes" placeholder="e.g. Clay bar, wax, interior vacuum">
+        </div>
+      </div>
+      <div class="add-form-actions">
+        <button class="add-form-save" onclick="saveWashRecord()">Save</button>
+        <button class="add-form-cancel" onclick="toggleAddWash()">Cancel</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>By</th>
+            <th>Notes</th>
+            <th style="text-align:right">Cost</th>
+          </tr>
+        </thead>
+        <tbody id="wash-body"></tbody>
       </table>
     </div>
   </div>
@@ -774,6 +843,80 @@ function deleteRecord(id) {
   buildRecent();
 }
 
+// Car wash
+function washTypeBadge(t) {
+  const map = {'Hand Wash':'type-wash','Full Detail':'type-detail','Machine Wash':'type-wash','PPF Wash':'type-ppfwash','Other':'type-other'};
+  return `<span class="type-badge ${map[t]||'type-wash'}">${t.toUpperCase()}</span>`;
+}
+function getWashRecords() {
+  var stored = localStorage.getItem('giulia-wash-records');
+  return stored ? JSON.parse(stored) : [];
+}
+function buildWashHistory() {
+  var records = getWashRecords().slice().reverse();
+  var tbody = document.getElementById('wash-body');
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:24px">No washes recorded yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(function(r) {
+    var deleteBtn = `<button class="delete-record-btn" title="Delete" onclick="deleteWashRecord('${r.id}')">✕</button>`;
+    return `<tr>
+      <td>${fmtDate(r.date)}</td>
+      <td>${washTypeBadge(r.type)}</td>
+      <td>${r.by || '—'}</td>
+      <td style="color:var(--text-muted);font-size:13px">${r.notes || '—'} ${deleteBtn}</td>
+      <td style="text-align:right">${fmt(r.cost)}</td>
+    </tr>`;
+  }).join('');
+}
+function loadLastWashed() {
+  var records = getWashRecords();
+  if (records.length === 0) return;
+  var last = records[records.length - 1];
+  document.getElementById('last-washed-date').textContent = fmtDate(last.date);
+  document.getElementById('last-washed-sub').textContent = last.type + (last.by ? ' · ' + last.by : '');
+}
+function toggleAddWash() {
+  var panel = document.getElementById('add-wash-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    document.getElementById('aw-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('aw-by').value = 'Self';
+    document.getElementById('aw-cost').value = '';
+    document.getElementById('aw-notes').value = '';
+  }
+}
+function saveWashRecord() {
+  var date = document.getElementById('aw-date').value;
+  var type = document.getElementById('aw-type').value;
+  var by = document.getElementById('aw-by').value.trim();
+  var cost = document.getElementById('aw-cost').value;
+  var notes = document.getElementById('aw-notes').value.trim();
+  if (!date) { alert('Date is required.'); return; }
+  var records = getWashRecords();
+  records.push({
+    id: Date.now().toString(),
+    date: date,
+    type: type,
+    by: by,
+    cost: cost ? parseFloat(cost) : 0,
+    notes: notes
+  });
+  records.sort(function(a, b) { return a.date.localeCompare(b.date); });
+  localStorage.setItem('giulia-wash-records', JSON.stringify(records));
+  toggleAddWash();
+  buildWashHistory();
+  loadLastWashed();
+}
+function deleteWashRecord(id) {
+  if (!confirm('Delete this wash record?')) return;
+  var records = getWashRecords().filter(function(r) { return r.id !== id; });
+  localStorage.setItem('giulia-wash-records', JSON.stringify(records));
+  buildWashHistory();
+  loadLastWashed();
+}
+
 function loadNextService() {
   var km = localStorage.getItem('giulia-next-km');
   var work = localStorage.getItem('giulia-next-work');
@@ -890,7 +1033,9 @@ window.onload = function() {
   document.getElementById('total-cost-header').textContent = fmtPlain(total);
   buildRecent();
   buildHistory('all');
+  buildWashHistory();
   loadNextService();
+  loadLastWashed();
 };
 </script>
 </body>
