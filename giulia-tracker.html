@@ -121,6 +121,7 @@
   .type-warranty { background: rgba(100,100,200,0.15); color: #8888dd; }
   .type-purchase { background: rgba(200,150,50,0.15); color: #d4a050; }
   .type-ppf { background: rgba(150,100,200,0.15); color: #bb88dd; }
+  .type-other { background: rgba(120,120,120,0.15); color: #aaa; }
   .cost-positive { color: var(--text); }
   .cost-zero { color: var(--text-dim); }
   .cost-large { color: var(--amber); }
@@ -161,6 +162,25 @@
   /* Total row */
   .totals-row { background: var(--surface2); font-weight: 600; }
   .totals-row td { border-top: 2px solid var(--border); color: var(--text); }
+
+  /* Add record form */
+  .add-btn { margin-left: auto; background: var(--red); border: none; color: #fff; font-size: 12px; padding: 5px 14px; border-radius: 4px; cursor: pointer; }
+  .add-btn:hover { opacity: 0.85; }
+  .add-record-panel { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 16px; display: none; }
+  .add-record-panel.open { display: block; }
+  .add-record-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .add-record-grid { grid-template-columns: 1fr; } }
+  .add-field label { display: block; font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .add-field input, .add-field select, .add-field textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 13px; padding: 6px 8px; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+  .add-field textarea { resize: vertical; min-height: 60px; }
+  .add-field input:focus, .add-field select:focus, .add-field textarea:focus { outline: none; border-color: var(--red); }
+  .add-form-actions { margin-top: 12px; display: flex; gap: 10px; }
+  .add-form-save { background: var(--red); border: none; color: #fff; font-size: 13px; padding: 7px 18px; border-radius: 4px; cursor: pointer; }
+  .add-form-save:hover { opacity: 0.85; }
+  .add-form-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-size: 13px; padding: 7px 14px; border-radius: 4px; cursor: pointer; }
+  .add-form-cancel:hover { color: var(--text); }
+  .delete-record-btn { background: none; border: none; color: var(--text-dim); font-size: 14px; cursor: pointer; padding: 0 4px; opacity: 0.5; }
+  .delete-record-btn:hover { color: var(--red); opacity: 1; }
 
   /* Mod expandable */
   .mod-expand-body { display: none; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
@@ -272,6 +292,54 @@
       <button class="filter-btn" onclick="filterHistory('Service', this)">Services</button>
       <button class="filter-btn" onclick="filterHistory('Tyres', this)">Tyres</button>
       <button class="filter-btn" onclick="filterHistory('Warranty', this)">Warranty</button>
+      <button class="add-btn" onclick="toggleAddRecord()">+ Add Record</button>
+    </div>
+    <div class="add-record-panel" id="add-record-panel">
+      <div class="add-record-grid">
+        <div class="add-field">
+          <label>Date</label>
+          <input type="date" id="ar-date">
+        </div>
+        <div class="add-field">
+          <label>Type</label>
+          <select id="ar-type">
+            <option>Service</option>
+            <option>Tyres</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="add-field">
+          <label>Workshop / Agent</label>
+          <input type="text" id="ar-agent" list="ar-agent-list">
+          <datalist id="ar-agent-list">
+            <option value="Automoda (Five Dock)">
+            <option value="Tyrepower Hornsby">
+            <option value="McCarroll's Alfa Romeo">
+            <option value="Integrity Car Care">
+            <option value="PROVINYL">
+          </datalist>
+        </div>
+        <div class="add-field">
+          <label>Odometer (km)</label>
+          <input type="text" id="ar-km" placeholder="e.g. 182000">
+        </div>
+        <div class="add-field">
+          <label>Cost ($)</label>
+          <input type="text" id="ar-cost" placeholder="0.00">
+        </div>
+        <div class="add-field">
+          <label>Summary</label>
+          <input type="text" id="ar-summary" placeholder="Brief description">
+        </div>
+      </div>
+      <div class="add-field" style="margin-top:12px">
+        <label>Notes (optional)</label>
+        <textarea id="ar-notes" placeholder="Full details of work carried out…"></textarea>
+      </div>
+      <div class="add-form-actions">
+        <button class="add-form-save" onclick="saveNewRecord()">Save Record</button>
+        <button class="add-form-cancel" onclick="toggleAddRecord()">Cancel</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -540,6 +608,13 @@ const records = [
   }
 ];
 
+// Merge hard-coded + localStorage records, sorted by date
+function getRecords() {
+  var stored = localStorage.getItem('giulia-custom-records');
+  var custom = stored ? JSON.parse(stored) : [];
+  return records.concat(custom).sort(function(a, b) { return a.date.localeCompare(b.date); });
+}
+
 // Utility
 function fmt(n) {
   if (n == null || n === 0) return '<span class="cost-zero">—</span>';
@@ -556,14 +631,14 @@ function fmtDate(d) {
   return `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`;
 }
 function typeBadge(t) {
-  const map = {Service:'type-service',Tyres:'type-tyres',Warranty:'type-warranty',Purchase:'type-purchase',PPF:'type-ppf'};
+  const map = {Service:'type-service',Tyres:'type-tyres',Warranty:'type-warranty',Purchase:'type-purchase',PPF:'type-ppf',Other:'type-other'};
   return `<span class="type-badge ${map[t]||'type-service'}">${t.toUpperCase()}</span>`;
 }
 
 // Totals
 function calcTotals() {
   let total = 0, service = 0;
-  records.forEach(r => {
+  getRecords().forEach(r => {
     total += r.cost || 0;
     if (!['Purchase','Warranty','PPF'].includes(r.type)) service += r.cost || 0;
   });
@@ -573,7 +648,7 @@ function calcTotals() {
 // Dashboard recent
 function buildRecent() {
   const tbody = document.getElementById('recent-body');
-  const recent = [...records].reverse().filter(r => r.type === 'Service' || r.type === 'Tyres').slice(0, 5);
+  const recent = [...getRecords()].reverse().filter(r => r.type === 'Service' || r.type === 'Tyres').slice(0, 5);
   tbody.innerHTML = recent.map(r => `
     <tr>
       <td>${fmtDate(r.date)}</td>
@@ -589,22 +664,24 @@ function buildRecent() {
 let currentFilter = 'all';
 function buildHistory(filter) {
   const tbody = document.getElementById('history-body');
-  const filtered = (filter === 'all' ? records : records.filter(r => r.type === filter || (r.tags && r.tags.includes(filter)))).slice().reverse();
+  const all = getRecords();
+  const filtered = (filter === 'all' ? all : all.filter(r => r.type === filter || (r.tags && r.tags.includes(filter)))).slice().reverse();
   let totalFiltered = 0;
   tbody.innerHTML = filtered.map((r, i) => {
     totalFiltered += r.cost || 0;
     const rid = `detail-${i}`;
+    const deleteBtn = r.custom ? `<button class="delete-record-btn" title="Delete this record" onclick="event.stopPropagation();deleteRecord('${r.id}')">✕</button>` : '';
     return `
       <tr class="data-row" onclick="toggleDetail('${rid}')">
         <td>${fmtDate(r.date)}</td>
         <td>${typeBadge(r.type)}${r.tags ? r.tags.map(t => typeBadge(t)).join('') : ''}</td>
         <td>${r.agent}</td>
         <td class="hide-sm">${r.km ? r.km.toLocaleString() : '—'}</td>
-        <td>${r.summary} <span class="expand-icon">▼</span></td>
+        <td>${r.summary} <span class="expand-icon">▼</span>${deleteBtn}</td>
         <td style="text-align:right">${fmt(r.cost)}</td>
       </tr>
       <tr class="detail-row" id="${rid}">
-        <td colspan="6"><div class="detail-notes">${r.notes}</div></td>
+        <td colspan="6"><div class="detail-notes">${r.notes || '—'}</div></td>
       </tr>
     `;
   }).join('');
@@ -619,6 +696,63 @@ function filterHistory(type, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   buildHistory(type);
+}
+function toggleAddRecord() {
+  var panel = document.getElementById('add-record-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    var today = new Date().toISOString().slice(0, 10);
+    document.getElementById('ar-date').value = today;
+    document.getElementById('ar-agent').value = 'Automoda (Five Dock)';
+    document.getElementById('ar-km').value = '';
+    document.getElementById('ar-cost').value = '';
+    document.getElementById('ar-summary').value = '';
+    document.getElementById('ar-notes').value = '';
+  }
+}
+function saveNewRecord() {
+  var date = document.getElementById('ar-date').value;
+  var type = document.getElementById('ar-type').value;
+  var agent = document.getElementById('ar-agent').value.trim();
+  var km = document.getElementById('ar-km').value;
+  var cost = document.getElementById('ar-cost').value;
+  var summary = document.getElementById('ar-summary').value.trim();
+  var notes = document.getElementById('ar-notes').value.trim();
+  if (!date || !agent || !summary) { alert('Date, workshop, and summary are required.'); return; }
+  var stored = localStorage.getItem('giulia-custom-records');
+  var custom = stored ? JSON.parse(stored) : [];
+  custom.push({
+    id: Date.now().toString(),
+    date: date,
+    type: type,
+    agent: agent,
+    km: km ? parseInt(km) : null,
+    cost: cost ? parseFloat(cost) : 0,
+    summary: summary,
+    notes: notes,
+    custom: true
+  });
+  localStorage.setItem('giulia-custom-records', JSON.stringify(custom));
+  toggleAddRecord();
+  buildHistory(currentFilter);
+  var firstRow = document.querySelector('#history-body tr');
+  if (firstRow) firstRow.scrollIntoView({behavior: 'smooth', block: 'center'});
+  var totals = calcTotals();
+  document.getElementById('dash-total').textContent = '$' + totals.total.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('dash-service').textContent = '$' + totals.service.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
+  buildRecent();
+}
+function deleteRecord(id) {
+  if (!confirm('Delete this record?')) return;
+  var stored = localStorage.getItem('giulia-custom-records');
+  var custom = stored ? JSON.parse(stored) : [];
+  custom = custom.filter(function(r) { return r.id !== id; });
+  localStorage.setItem('giulia-custom-records', JSON.stringify(custom));
+  buildHistory(currentFilter);
+  var totals = calcTotals();
+  document.getElementById('dash-total').textContent = '$' + totals.total.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('dash-service').textContent = '$' + totals.service.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
+  buildRecent();
 }
 
 // Drum odometer
