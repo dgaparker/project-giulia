@@ -256,8 +256,8 @@
       </div>
       <div class="card">
         <div class="card-label">Next Service Est.</div>
-        <div class="card-value">182,000 km</div>
-        <div class="card-sub"></div>
+        <div class="card-value" id="next-service-km">182,000 km</div>
+        <div class="card-sub" id="next-service-notes"></div>
       </div>
       <div class="card green">
         <div class="card-label">Active Warranty</div>
@@ -335,6 +335,16 @@
       <div class="add-field" style="margin-top:12px">
         <label>Notes (optional)</label>
         <textarea id="ar-notes" placeholder="Full details of work carried out…"></textarea>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;display:grid;grid-template-columns:1fr 2fr;gap:12px">
+        <div class="add-field">
+          <label>Next service at (km)</label>
+          <input type="text" id="ar-next-km" placeholder="e.g. 187000">
+        </div>
+        <div class="add-field">
+          <label>Work expected at next visit</label>
+          <input type="text" id="ar-next-work" placeholder="e.g. Brake pads, tyre check">
+        </div>
       </div>
       <div class="add-form-actions">
         <button class="add-form-save" onclick="saveNewRecord()">Save Record</button>
@@ -708,6 +718,10 @@ function toggleAddRecord() {
     document.getElementById('ar-cost').value = '';
     document.getElementById('ar-summary').value = '';
     document.getElementById('ar-notes').value = '';
+    var storedKm = localStorage.getItem('giulia-next-km');
+    var storedWork = localStorage.getItem('giulia-next-work');
+    document.getElementById('ar-next-km').value = storedKm ? parseInt(storedKm).toLocaleString('en-AU') : '';
+    document.getElementById('ar-next-work').value = storedWork || '';
   }
 }
 function saveNewRecord() {
@@ -733,6 +747,10 @@ function saveNewRecord() {
     custom: true
   });
   localStorage.setItem('giulia-custom-records', JSON.stringify(custom));
+  var nextKm = document.getElementById('ar-next-km').value.trim();
+  var nextWork = document.getElementById('ar-next-work').value.trim();
+  if (nextKm) localStorage.setItem('giulia-next-km', nextKm.replace(/[^0-9]/g, ''));
+  if (nextWork) localStorage.setItem('giulia-next-work', nextWork);
   toggleAddRecord();
   buildHistory(currentFilter);
   var firstRow = document.querySelector('#history-body tr');
@@ -741,6 +759,7 @@ function saveNewRecord() {
   document.getElementById('dash-total').textContent = '$' + totals.total.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('dash-service').textContent = '$' + totals.service.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
   buildRecent();
+  loadNextService();
 }
 function deleteRecord(id) {
   if (!confirm('Delete this record?')) return;
@@ -753,6 +772,13 @@ function deleteRecord(id) {
   document.getElementById('dash-total').textContent = '$' + totals.total.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('dash-service').textContent = '$' + totals.service.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
   buildRecent();
+}
+
+function loadNextService() {
+  var km = localStorage.getItem('giulia-next-km');
+  var work = localStorage.getItem('giulia-next-work');
+  if (km) document.getElementById('next-service-km').textContent = parseInt(km).toLocaleString('en-AU') + ' km';
+  if (work) document.getElementById('next-service-notes').textContent = work;
 }
 
 // Drum odometer
@@ -864,6 +890,7 @@ window.onload = function() {
   document.getElementById('total-cost-header').textContent = fmtPlain(total);
   buildRecent();
   buildHistory('all');
+  loadNextService();
 };
 </script>
 </body>
