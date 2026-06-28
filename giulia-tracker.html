@@ -525,7 +525,7 @@ const records = [
     notes: "Paint protection film applied by PROVINYL.\nProduct: Inozetek Dragon's Blood Gloss Metallic (DPPF711).\nFactory colour: Vulcano Black.\n"
   },
   {
-    date: "2025-11-14", type: "Service", agent: "Automoda (Five Dock)", km: 177605,
+    date: "2025-11-14", type: "Service", tags: ["Tyres"], agent: "Automoda (Five Dock)", km: 177605,
     summary: "Full service + front tyres + alignment",
     cost: 2744.85,
     notes: "<strong>Work carried out:</strong>\nFull service: oil & filter, brake fluid.\nFront tyres replaced: 2× Michelin PS4S fitted, balanced & disposed — $1,100.\nFront & rear wheel alignment — $165.\nAll systems checked: gearbox, brakes, suspension, exhaust, cooling, battery, drive belts, air con, lights, wipers.\nECU checks: no faults detected, software up to date.\n\n<strong>Warranty items resolved this visit:</strong>\nDNA selector switch — replaced under warranty. ✓\nN/S/R blind spot sensor — already replaced. ✓\n\n<strong>Advisory:</strong>\nBrake pad warning light came on — sensors removed, 5,000km minimum left.\nFront bumper mount N/S — repaired by ProVinyl. ✓"
@@ -581,7 +581,7 @@ function buildRecent() {
 let currentFilter = 'all';
 function buildHistory(filter) {
   const tbody = document.getElementById('history-body');
-  const filtered = (filter === 'all' ? records : records.filter(r => r.type === filter)).slice().reverse();
+  const filtered = (filter === 'all' ? records : records.filter(r => r.type === filter || (r.tags && r.tags.includes(filter)))).slice().reverse();
   let totalFiltered = 0;
   tbody.innerHTML = filtered.map((r, i) => {
     totalFiltered += r.cost || 0;
@@ -589,7 +589,7 @@ function buildHistory(filter) {
     return `
       <tr class="data-row" onclick="toggleDetail('${rid}')">
         <td>${fmtDate(r.date)}</td>
-        <td>${typeBadge(r.type)}</td>
+        <td>${typeBadge(r.type)}${r.tags ? r.tags.map(t => typeBadge(t)).join('') : ''}</td>
         <td>${r.agent}</td>
         <td class="hide-sm">${r.km ? r.km.toLocaleString() : '—'}</td>
         <td>${r.summary} <span class="expand-icon">▼</span></td>
