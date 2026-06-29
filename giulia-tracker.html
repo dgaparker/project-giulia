@@ -209,6 +209,17 @@
   .modal-close { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px; }
   .modal-close:hover { color: var(--text); }
 
+  /* Tyre panel */
+  .tyre-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 20px; margin-bottom: 28px; }
+  .tyre-axle { display: flex; align-items: center; gap: 20px; padding: 16px 0; }
+  .tyre-axle + .tyre-axle { border-top: 1px solid var(--border); }
+  .tyre-wheel { width: 54px; height: 54px; border-radius: 50%; background: #111; border: 11px solid #303030; box-shadow: inset 0 0 0 3px #555, 0 0 0 1.5px #3a3a3a; flex-shrink: 0; }
+  .tyre-center { flex: 1; text-align: center; }
+  .tyre-pos { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
+  .tyre-brand { font-size: 14px; font-weight: 600; color: var(--text); }
+  .tyre-km-val { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 4px; }
+  .tyre-km-label { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
   /* Responsive */
   @media (max-width: 700px) {
     .header { flex-wrap: wrap; }
@@ -290,20 +301,10 @@
         <div class="card-value" id="dash-total">—</div>
         <div class="card-sub">Since purchase May 2019</div>
       </div>
-      <div class="card">
-        <div class="card-label">Servicing &amp; Repairs</div>
-        <div class="card-value" id="dash-service">—</div>
-        <div class="card-sub">Excluding purchase &amp; warranties</div>
-      </div>
       <div class="card" onclick="showTab('wash')" style="cursor:pointer" title="Go to Car Wash">
         <div class="card-label">Last Washed</div>
         <div class="card-value" id="last-washed-date" style="font-size:16px">—</div>
         <div class="card-sub" id="last-washed-sub"></div>
-      </div>
-      <div class="card" id="insurance-card" onclick="showTab('insurance')" style="cursor:pointer" title="Go to Insurance">
-        <div class="card-label">Insurance</div>
-        <div class="card-value" style="font-size:15px" id="ins-dash-insurer">—</div>
-        <div class="card-sub" id="ins-dash-days"></div>
       </div>
       <div class="card" id="rego-card" onclick="editRego()" style="cursor:pointer" title="Click to update">
         <div class="card-label">Registration Expiry <span style="color:var(--text-dim);font-size:10px">✎</span></div>
@@ -312,6 +313,45 @@
           <div class="card-sub" id="rego-days">Click to set date</div>
         </div>
         <input id="rego-input" type="date" style="display:none;background:transparent;border:none;border-bottom:1px solid var(--red);color:var(--text);font-size:16px;font-weight:600;width:100%;outline:none" onblur="saveRego()" onkeydown="if(event.key==='Enter')saveRego()">
+      </div>
+      <div class="card">
+        <div class="card-label">Avg km / Year</div>
+        <div class="card-value" id="avg-km-recent">—</div>
+        <div class="card-sub">Since Apr 2024 service</div>
+      </div>
+      <div class="card" id="insurance-card" onclick="showTab('insurance')" style="cursor:pointer" title="Go to Insurance">
+        <div class="card-label">Insurance</div>
+        <div class="card-value" style="font-size:15px" id="ins-dash-insurer">—</div>
+        <div class="card-sub" id="ins-dash-days"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Servicing &amp; Repairs</div>
+        <div class="card-value" id="dash-service">—</div>
+        <div class="card-sub">Excluding purchase &amp; warranties</div>
+      </div>
+    </div>
+
+    <div class="section-title">Current Tyres</div>
+    <div class="tyre-panel">
+      <div class="tyre-axle">
+        <div class="tyre-wheel"></div>
+        <div class="tyre-center">
+          <div class="tyre-pos">Front</div>
+          <div class="tyre-brand" id="front-tyre-brand">—</div>
+          <div class="tyre-km-val" id="front-tyre-km">—</div>
+          <div class="tyre-km-label">km on current set</div>
+        </div>
+        <div class="tyre-wheel"></div>
+      </div>
+      <div class="tyre-axle">
+        <div class="tyre-wheel"></div>
+        <div class="tyre-center">
+          <div class="tyre-pos">Rear</div>
+          <div class="tyre-brand" id="rear-tyre-brand">—</div>
+          <div class="tyre-km-val" id="rear-tyre-km">—</div>
+          <div class="tyre-km-label">km on current set</div>
+        </div>
+        <div class="tyre-wheel"></div>
       </div>
     </div>
 
@@ -341,7 +381,7 @@
         </div>
         <div class="add-field">
           <label>Type</label>
-          <select id="ar-type">
+          <select id="ar-type" onchange="onTypeChange()">
             <option>Service</option>
             <option>Tyres</option>
             <option>Other</option>
@@ -371,11 +411,32 @@
           <input type="text" id="ar-summary" placeholder="Brief description">
         </div>
       </div>
+      <div id="tyre-fields" style="display:none;border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
+          <div class="add-field">
+            <label>Axle</label>
+            <select id="ar-axle">
+              <option value="front">Front</option>
+              <option value="rear">Rear</option>
+            </select>
+          </div>
+          <div class="add-field">
+            <label>Brand / Model</label>
+            <input type="text" id="ar-tyre-brand" list="ar-brand-list" placeholder="e.g. Michelin Pilot Sport 4S">
+            <datalist id="ar-brand-list">
+              <option value="Michelin Pilot Sport 4S">
+              <option value="Michelin Pilot Super Sport">
+              <option value="Pirelli P Zero">
+              <option value="Bridgestone Potenza">
+            </datalist>
+          </div>
+        </div>
+      </div>
       <div class="add-field" style="margin-top:12px">
         <label>Notes (optional)</label>
         <textarea id="ar-notes" placeholder="Full details of work carried out…"></textarea>
       </div>
-      <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;display:grid;grid-template-columns:1fr 2fr;gap:12px">
+      <div id="next-service-section" style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;display:grid;grid-template-columns:1fr 2fr;gap:12px">
         <div class="add-field">
           <label>Next service at (km)</label>
           <input type="text" id="ar-next-km" placeholder="e.g. 187000">
@@ -847,17 +908,29 @@ function filterHistory(type, btn) {
   btn.classList.add('active');
   buildHistory(type);
 }
+function onTypeChange() {
+  var type = document.getElementById('ar-type').value;
+  var isTyre = type === 'Tyres';
+  document.getElementById('tyre-fields').style.display = isTyre ? 'block' : 'none';
+  document.getElementById('next-service-section').style.display = isTyre ? 'none' : 'grid';
+  document.getElementById('ar-agent').value = isTyre ? 'Tyrepower Hornsby' : 'Automoda (Five Dock)';
+}
 function toggleAddRecord() {
   var panel = document.getElementById('add-record-panel');
   panel.classList.toggle('open');
   if (panel.classList.contains('open')) {
     var today = new Date().toISOString().slice(0, 10);
     document.getElementById('ar-date').value = today;
+    document.getElementById('ar-type').value = 'Service';
     document.getElementById('ar-agent').value = 'Automoda (Five Dock)';
     document.getElementById('ar-km').value = '';
     document.getElementById('ar-cost').value = '';
     document.getElementById('ar-summary').value = '';
     document.getElementById('ar-notes').value = '';
+    document.getElementById('ar-axle').value = 'front';
+    document.getElementById('ar-tyre-brand').value = '';
+    document.getElementById('tyre-fields').style.display = 'none';
+    document.getElementById('next-service-section').style.display = 'grid';
     var storedKm = localStorage.getItem('giulia-next-km');
     var storedWork = localStorage.getItem('giulia-next-work');
     document.getElementById('ar-next-km').value = storedKm ? parseInt(storedKm).toLocaleString('en-AU') : '';
@@ -872,10 +945,16 @@ function saveNewRecord() {
   var cost = document.getElementById('ar-cost').value;
   var summary = document.getElementById('ar-summary').value.trim();
   var notes = document.getElementById('ar-notes').value.trim();
-  if (!date || !agent || !summary) { alert('Date, workshop, and summary are required.'); return; }
+  var isTyre = type === 'Tyres';
+  var axle = isTyre ? document.getElementById('ar-axle').value : null;
+  var tyreBrand = isTyre ? document.getElementById('ar-tyre-brand').value.trim() : null;
+  if (isTyre && !tyreBrand) { alert('Please enter a tyre brand.'); return; }
+  if (!isTyre && !summary) { alert('Date, workshop, and summary are required.'); return; }
+  if (!date || !agent) { alert('Date and workshop are required.'); return; }
+  if (isTyre && !summary) summary = tyreBrand + ' — ' + axle + ' axle';
   var stored = localStorage.getItem('giulia-custom-records');
   var custom = stored ? JSON.parse(stored) : [];
-  custom.push({
+  var rec = {
     id: Date.now().toString(),
     date: date,
     type: type,
@@ -885,7 +964,9 @@ function saveNewRecord() {
     summary: summary,
     notes: notes,
     custom: true
-  });
+  };
+  if (isTyre) { rec.axle = axle; rec.tyreBrand = tyreBrand; }
+  custom.push(rec);
   localStorage.setItem('giulia-custom-records', JSON.stringify(custom));
   var nextKm = document.getElementById('ar-next-km').value.trim();
   var nextWork = document.getElementById('ar-next-work').value.trim();
@@ -900,6 +981,7 @@ function saveNewRecord() {
   document.getElementById('dash-service').textContent = '$' + totals.service.toLocaleString('en-AU', {minimumFractionDigits:2,maximumFractionDigits:2});
   buildRecent();
   loadNextService();
+  renderTyrePanel();
 }
 function deleteRecord(id) {
   if (!confirm('Delete this record?')) return;
@@ -994,6 +1076,12 @@ function loadAvgKm() {
   var delivery = new Date('2017-03-31');
   var years = (new Date() - delivery) / (365.25 * 24 * 60 * 60 * 1000);
   document.getElementById('avg-km-year').textContent = Math.round(currentKm / years).toLocaleString('en-AU');
+}
+function loadAvgKmRecent() {
+  var currentKm = parseInt(localStorage.getItem('giulia-odo')) || 177605;
+  var startKm = 162558;
+  var years = (new Date() - new Date('2024-04-15')) / (365.25 * 24 * 60 * 60 * 1000);
+  document.getElementById('avg-km-recent').textContent = Math.round((currentKm - startKm) / years).toLocaleString('en-AU');
 }
 
 // Km history chart
@@ -1179,6 +1267,9 @@ function saveOdometer() {
     input.style.display = 'none';
     display.style.display = '';
     renderOdometer(val, true);
+    renderTyrePanel();
+    loadAvgKm();
+    loadAvgKmRecent();
   } else {
     input.style.display = 'none';
     display.style.display = '';
@@ -1234,6 +1325,39 @@ function buildInsuranceTab() {
   else { daysEl.textContent = fmtDate(cur.expiry) + ' · ' + diff + ' days'; card.classList.add('green'); }
 }
 
+// Tyre panel
+function renderTyrePanel() {
+  var currentKm = parseInt(localStorage.getItem('giulia-odo')) || 177605;
+  var tyreRecs = getRecords().filter(function(r) {
+    return (r.type === 'Tyres' || (r.tags && r.tags.indexOf('Tyres') >= 0)) && r.km;
+  }).sort(function(a, b) { return b.km - a.km; });
+
+  var front = null, rear = null;
+  tyreRecs.forEach(function(r) {
+    if (r.axle === 'front' && !front) { front = r; return; }
+    if (r.axle === 'rear'  && !rear)  { rear  = r; return; }
+    if (!r.axle) {
+      var text = ((r.summary || '') + ' ' + (r.notes || '')).toLowerCase();
+      if (!front && (text.indexOf('front tyre') >= 0 || text.indexOf('front axle') >= 0)) front = r;
+      if (!rear  && (text.indexOf('rear tyre')  >= 0 || text.indexOf('rear axle')  >= 0)) rear  = r;
+    }
+  });
+
+  function brandFrom(r) {
+    if (!r) return '—';
+    if (r.tyreBrand) return r.tyreBrand;
+    var text = ((r.summary || '') + ' ' + (r.notes || '')).replace(/<[^>]+>/g, '');
+    var m = text.match(/(Michelin|Pirelli|Bridgestone|Continental|Dunlop|Yokohama|Goodyear)[^\n.,<(]*/);
+    if (m) return m[0].trim();
+    return r.summary.replace(/^\d+[×x]\s*/, '').split('+')[0].trim();
+  }
+
+  document.getElementById('front-tyre-brand').textContent = brandFrom(front);
+  document.getElementById('rear-tyre-brand').textContent = brandFrom(rear);
+  document.getElementById('front-tyre-km').textContent = front ? Math.max(0, currentKm - front.km).toLocaleString('en-AU') : '—';
+  document.getElementById('rear-tyre-km').textContent = rear ? Math.max(0, currentKm - rear.km).toLocaleString('en-AU') : '—';
+}
+
 // Tab switching
 function showTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -1258,6 +1382,8 @@ window.onload = function() {
   loadRego();
   buildInsuranceTab();
   loadAvgKm();
+  loadAvgKmRecent();
+  renderTyrePanel();
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeKmChart(); });
 };
 </script>
