@@ -36,6 +36,9 @@
   .stat { text-align: right; }
   .stat-value { font-size: 16px; font-weight: 600; }
   .stat-label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; }
+  .data-controls { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+  .data-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 11px; padding: 3px 10px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+  .data-btn:hover { color: var(--text); border-color: #555; }
 
   /* Tabs */
   .tabs { display: flex; border-bottom: 1px solid var(--border); padding: 0 24px; background: var(--surface); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -236,6 +239,7 @@
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .cards { grid-template-columns: 1fr 1fr; }
     .warranty-cards { grid-template-columns: 1fr; }
+    .data-controls { display: none; }
   }
   @media (max-width: 480px) {
     .header-sub { font-size: 10px; }
@@ -272,6 +276,11 @@
       <div class="stat-value" id="total-cost-header">—</div>
       <div class="stat-label">Total spend</div>
     </div>
+  </div>
+  <div class="data-controls">
+    <button class="data-btn" onclick="exportData()">↓ Export data</button>
+    <button class="data-btn" onclick="document.getElementById('import-input').click()">↑ Import data</button>
+    <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(this)">
   </div>
 </div>
 
@@ -1405,6 +1414,51 @@ window.onload = function() {
   renderTyrePanel();
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeKmChart(); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/project-giulia/sw.js');
+};
+
+function exportData() {
+  var keys = ['giulia-custom-records','giulia-wash-records','giulia-odo','giulia-odo-date','giulia-next-km','giulia-next-work','giulia-rego-expiry'];
+  var data = {};
+  keys.forEach(function(k) { var v = localStorage.getItem(k); if (v) data[k] = v; });
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  var a = document.createElement('a');
+  var today = new Date().toISOString().slice(0,10);
+  a.href = URL.createObjectURL(blob);
+  a.download = 'giulia-backup-' + today + '.json';
+  a.click();
+}
+
+function importData(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      Object.keys(data).forEach(function(k) { localStorage.setItem(k, data[k]); });
+      // Refresh all displays
+      loadOdometer();
+      var totals = calcTotals();
+      document.getElementById('dash-total').textContent = fmtPlain(totals.total);
+      document.getElementById('dash-service').textContent = fmtPlain(totals.service);
+      document.getElementById('total-cost-header').textContent = fmtPlain(totals.total);
+      buildRecent();
+      buildHistory(currentFilter);
+      buildWashHistory();
+      loadNextService();
+      loadLastWashed();
+      loadRego();
+      buildInsuranceTab();
+      loadAvgKm();
+      loadAvgKmRecent();
+      renderTyrePanel();
+      alert('Data imported successfully.');
+    } catch(err) {
+      alert('Import failed — file may be corrupted.');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
 };
 </script>
 </body>
