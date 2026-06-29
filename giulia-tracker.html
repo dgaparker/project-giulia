@@ -285,6 +285,14 @@
         <div class="card-value" id="last-washed-date" style="font-size:16px">—</div>
         <div class="card-sub" id="last-washed-sub"></div>
       </div>
+      <div class="card" id="rego-card" onclick="editRego()" style="cursor:pointer" title="Click to update">
+        <div class="card-label">Registration Expiry <span style="color:var(--text-dim);font-size:10px">✎</span></div>
+        <div id="rego-display">
+          <div class="card-value" id="rego-date" style="font-size:17px">—</div>
+          <div class="card-sub" id="rego-days">Click to set date</div>
+        </div>
+        <input id="rego-input" type="date" style="display:none;background:transparent;border:none;border-bottom:1px solid var(--red);color:var(--text);font-size:16px;font-weight:600;width:100%;outline:none" onblur="saveRego()" onkeydown="if(event.key==='Enter')saveRego()">
+      </div>
     </div>
 
     <div class="section-title">Recent Services</div>
@@ -917,6 +925,56 @@ function deleteWashRecord(id) {
   loadLastWashed();
 }
 
+// Registration
+function editRego() {
+  var display = document.getElementById('rego-display');
+  var input = document.getElementById('rego-input');
+  input.value = localStorage.getItem('giulia-rego-expiry') || '';
+  display.style.display = 'none';
+  input.style.display = 'block';
+  input.focus();
+}
+function saveRego() {
+  var input = document.getElementById('rego-input');
+  var display = document.getElementById('rego-display');
+  if (input.value) localStorage.setItem('giulia-rego-expiry', input.value);
+  input.style.display = 'none';
+  display.style.display = '';
+  loadRego();
+}
+function loadRego() {
+  var stored = localStorage.getItem('giulia-rego-expiry');
+  var card = document.getElementById('rego-card');
+  var dateEl = document.getElementById('rego-date');
+  var daysEl = document.getElementById('rego-days');
+  card.classList.remove('green', 'amber', 'accent');
+  if (!stored) {
+    dateEl.textContent = '—';
+    daysEl.textContent = 'Click to set date';
+    return;
+  }
+  dateEl.textContent = fmtDate(stored);
+  var today = new Date(); today.setHours(0,0,0,0);
+  var expiry = new Date(stored); expiry.setHours(0,0,0,0);
+  var diff = Math.round((expiry - today) / 86400000);
+  if (diff < 0) {
+    daysEl.textContent = 'Expired ' + Math.abs(diff) + ' day' + (Math.abs(diff) === 1 ? '' : 's') + ' ago';
+    card.classList.add('accent');
+  } else if (diff === 0) {
+    daysEl.textContent = 'Expires today';
+    card.classList.add('accent');
+  } else if (diff <= 30) {
+    daysEl.textContent = diff + ' day' + (diff === 1 ? '' : 's') + ' remaining';
+    card.classList.add('accent');
+  } else if (diff <= 60) {
+    daysEl.textContent = diff + ' days remaining';
+    card.classList.add('amber');
+  } else {
+    daysEl.textContent = diff + ' days remaining';
+    card.classList.add('green');
+  }
+}
+
 function loadNextService() {
   var km = localStorage.getItem('giulia-next-km');
   var work = localStorage.getItem('giulia-next-work');
@@ -1036,6 +1094,7 @@ window.onload = function() {
   buildWashHistory();
   loadNextService();
   loadLastWashed();
+  loadRego();
 };
 </script>
 </body>
