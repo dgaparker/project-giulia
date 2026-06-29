@@ -242,6 +242,7 @@
   <div class="tab" onclick="showTab('wash')">Car Wash</div>
   <div class="tab" onclick="showTab('warranties')">Warranties</div>
   <div class="tab" onclick="showTab('mods')">Modifications</div>
+  <div class="tab" onclick="showTab('insurance')">Insurance</div>
 </div>
 
 <div class="content">
@@ -284,6 +285,11 @@
         <div class="card-label">Last Washed</div>
         <div class="card-value" id="last-washed-date" style="font-size:16px">—</div>
         <div class="card-sub" id="last-washed-sub"></div>
+      </div>
+      <div class="card" id="insurance-card" onclick="showTab('insurance')" style="cursor:pointer" title="Go to Insurance">
+        <div class="card-label">Insurance</div>
+        <div class="card-value" style="font-size:15px" id="ins-dash-insurer">—</div>
+        <div class="card-sub" id="ins-dash-days"></div>
       </div>
       <div class="card" id="rego-card" onclick="editRego()" style="cursor:pointer" title="Click to update">
         <div class="card-label">Registration Expiry <span style="color:var(--text-dim);font-size:10px">✎</span></div>
@@ -542,6 +548,35 @@
         <div class="mod-date">May 2022<br>106,784 km</div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- INSURANCE -->
+  <div class="tab-panel" id="tab-insurance">
+    <div class="warranty-cards" style="margin-bottom:28px">
+      <div class="warranty-card active-warranty">
+        <h3>Current Policy <span style="color:var(--green);font-size:12px">● Active</span></h3>
+        <div class="warranty-row"><span class="label">Insurer</span><span id="ins-cur-insurer">—</span></div>
+        <div class="warranty-row"><span class="label">Period</span><span id="ins-cur-period">—</span></div>
+        <div class="warranty-row"><span class="label">Expiry</span><span id="ins-cur-expiry">—</span></div>
+        <div class="warranty-row"><span class="label">Annual premium</span><span id="ins-cur-premium">—</span></div>
+        <div class="warranty-row"><span class="label">Basic excess</span><span id="ins-cur-excess">—</span></div>
+        <div class="warranty-row"><span class="label">Days to renewal</span><span id="ins-cur-days" class="status-active">—</span></div>
+      </div>
+    </div>
+    <div class="section-title">Annual History</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Insurer</th>
+            <th style="text-align:right">Premium</th>
+            <th style="text-align:right">Basic Excess</th>
+          </tr>
+        </thead>
+        <tbody id="insurance-body"></tbody>
+      </table>
     </div>
   </div>
 
@@ -1069,12 +1104,44 @@ function toggleMod(id) {
   if (icon) icon.textContent = body.classList.contains('open') ? '▲' : '▼';
 }
 
+// Insurance
+const insuranceRecords = [
+  { period: "10 May 2026 – 10 May 2027", expiry: "2027-05-10", insurer: "QBE Comprehensive", premium: 1703.18, excess: 900 },
+  { period: "10 May 2025 – 10 May 2026", expiry: "2026-05-10", insurer: "QBE Comprehensive", premium: 2098.60, excess: 900 }
+];
+function buildInsuranceTab() {
+  var cur = insuranceRecords[0];
+  document.getElementById('ins-cur-insurer').textContent = cur.insurer;
+  document.getElementById('ins-cur-period').textContent = cur.period;
+  document.getElementById('ins-cur-expiry').textContent = fmtDate(cur.expiry);
+  document.getElementById('ins-cur-premium').textContent = fmtPlain(cur.premium);
+  document.getElementById('ins-cur-excess').textContent = '$' + cur.excess.toLocaleString('en-AU');
+  var today = new Date(); today.setHours(0,0,0,0);
+  var expiry = new Date(cur.expiry); expiry.setHours(0,0,0,0);
+  var diff = Math.round((expiry - today) / 86400000);
+  document.getElementById('ins-cur-days').textContent = diff > 0 ? diff + ' days' : 'Expired';
+  document.getElementById('insurance-body').innerHTML = insuranceRecords.map(function(r, i) {
+    var rowStyle = i === 0 ? '' : ' style="opacity:0.65"';
+    return '<tr' + rowStyle + '><td>' + r.period + '</td><td>' + r.insurer + '</td><td style="text-align:right">' + fmtPlain(r.premium) + '</td><td style="text-align:right">$' + r.excess.toLocaleString('en-AU') + '</td></tr>';
+  }).join('');
+  // Dashboard card
+  var card = document.getElementById('insurance-card');
+  card.classList.remove('green', 'amber', 'accent');
+  document.getElementById('ins-dash-insurer').textContent = cur.insurer;
+  var daysEl = document.getElementById('ins-dash-days');
+  if (diff < 0) { daysEl.textContent = 'Expired'; card.classList.add('accent'); }
+  else if (diff <= 30) { daysEl.textContent = diff + ' days to renewal'; card.classList.add('accent'); }
+  else if (diff <= 60) { daysEl.textContent = diff + ' days to renewal'; card.classList.add('amber'); }
+  else { daysEl.textContent = fmtDate(cur.expiry) + ' · ' + diff + ' days'; card.classList.add('green'); }
+}
+
 // Tab switching
 function showTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  event.target.classList.add('active');
+  var btn = Array.from(document.querySelectorAll('.tab')).find(t => t.getAttribute('onclick') === "showTab('" + name + "')");
+  if (btn) btn.classList.add('active');
 }
 
 // Init
@@ -1090,6 +1157,7 @@ window.onload = function() {
   loadNextService();
   loadLastWashed();
   loadRego();
+  buildInsuranceTab();
 };
 </script>
 </body>
