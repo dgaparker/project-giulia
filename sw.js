@@ -1,4 +1,4 @@
-const CACHE = 'giulia-v1';
+const CACHE = 'giulia-v3';
 const ASSETS = [
   '/project-giulia/',
   '/project-giulia/index.html',
