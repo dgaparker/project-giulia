@@ -200,6 +200,15 @@
   .mod-expand-list li { font-size: 13px; color: var(--text-muted); padding-left: 14px; position: relative; }
   .mod-expand-list li::before { content: "–"; position: absolute; left: 0; color: var(--red); }
 
+  /* Chart modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 780px; width: 100%; position: relative; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-title { font-size: 14px; font-weight: 600; }
+  .modal-close { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px; }
+  .modal-close:hover { color: var(--text); }
+
   /* Responsive */
   @media (max-width: 700px) {
     .header { flex-wrap: wrap; }
@@ -265,6 +274,11 @@
         <div class="card-label">Next Service Est.</div>
         <div class="card-value" id="next-service-km">182,000 km</div>
         <div class="card-sub" id="next-service-notes"></div>
+      </div>
+      <div class="card" onclick="openKmChart()" style="cursor:pointer" title="View km history graph">
+        <div class="card-label">Avg km / Year <span style="color:var(--text-dim);font-size:10px">↗</span></div>
+        <div class="card-value" id="avg-km-year">—</div>
+        <div class="card-sub">Since delivery Mar 2017</div>
       </div>
       <div class="card green">
         <div class="card-label">Active Warranty</div>
@@ -581,6 +595,20 @@
   </div>
 
 </div><!-- /content -->
+
+<div class="modal-overlay" id="km-chart-modal" onclick="if(event.target===this)closeKmChart()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Odometer History — NQV732</div>
+      <button class="modal-close" onclick="closeKmChart()">×</button>
+    </div>
+    <svg id="km-chart-svg" width="100%" viewBox="0 0 700 320" style="display:block"></svg>
+    <div style="margin-top:12px;display:flex;gap:20px;font-size:11px;color:var(--text-muted)">
+      <span><span style="display:inline-block;width:18px;height:2.5px;background:var(--red);vertical-align:middle;margin-right:5px"></span>Actual km</span>
+      <span><span style="display:inline-block;width:18px;height:1px;border-top:1px dashed #555;vertical-align:middle;margin-right:5px"></span>Average trend</span>
+    </div>
+  </div>
+</div>
 
 <script>
 const records = [
@@ -960,6 +988,77 @@ function deleteWashRecord(id) {
   loadLastWashed();
 }
 
+// Average km / year
+function loadAvgKm() {
+  var currentKm = parseInt(localStorage.getItem('giulia-odo')) || 177605;
+  var delivery = new Date('2017-03-31');
+  var years = (new Date() - delivery) / (365.25 * 24 * 60 * 60 * 1000);
+  document.getElementById('avg-km-year').textContent = Math.round(currentKm / years).toLocaleString('en-AU');
+}
+
+// Km history chart
+function getKmDataPoints() {
+  var pts = [{ date: new Date('2017-03-31'), km: 0 }];
+  records.forEach(function(r) { if (r.km) pts.push({ date: new Date(r.date), km: r.km }); });
+  var currentKm = parseInt(localStorage.getItem('giulia-odo')) || 177605;
+  if (pts[pts.length - 1].km !== currentKm) pts.push({ date: new Date(), km: currentKm });
+  pts.sort(function(a, b) { return a.date - b.date; });
+  return pts;
+}
+function drawKmChart() {
+  var pts = getKmDataPoints();
+  var svg = document.getElementById('km-chart-svg');
+  var W = 700, H = 320, ml = 62, mr = 24, mt = 20, mb = 44;
+  var cw = W - ml - mr, ch = H - mt - mb;
+  var xMin = new Date('2017-01-01').getTime();
+  var xMax = new Date(new Date().getFullYear() + 1, 0, 1).getTime();
+  var yMax = 220000;
+  function px(d) { return ml + (d.getTime() - xMin) / (xMax - xMin) * cw; }
+  function py(k) { return mt + ch - k / yMax * ch; }
+  var h = '';
+  // Y grid + labels
+  [0, 50000, 100000, 150000, 200000].forEach(function(k) {
+    var y = py(k);
+    h += '<line x1="' + ml + '" y1="' + y + '" x2="' + (W-mr) + '" y2="' + y + '" stroke="#252525" stroke-width="1"/>';
+    h += '<text x="' + (ml-8) + '" y="' + (y+4) + '" text-anchor="end" fill="#666" font-size="10" font-family="sans-serif">' + (k === 0 ? '0' : (k/1000) + 'k') + '</text>';
+  });
+  // X grid + labels
+  for (var yr = 2017; yr <= new Date().getFullYear() + 1; yr++) {
+    var d = new Date(yr, 0, 1);
+    if (d.getTime() > xMax) break;
+    var x = px(d);
+    h += '<line x1="' + x + '" y1="' + mt + '" x2="' + x + '" y2="' + (mt+ch) + '" stroke="#252525" stroke-width="1"/>';
+    h += '<text x="' + x + '" y="' + (mt+ch+14) + '" text-anchor="middle" fill="#666" font-size="10" font-family="sans-serif">' + yr + '</text>';
+  }
+  // Axes
+  h += '<line x1="' + ml + '" y1="' + mt + '" x2="' + ml + '" y2="' + (mt+ch) + '" stroke="#444" stroke-width="1.5"/>';
+  h += '<line x1="' + ml + '" y1="' + (mt+ch) + '" x2="' + (W-mr) + '" y2="' + (mt+ch) + '" stroke="#444" stroke-width="1.5"/>';
+  // Y-axis label
+  var midY = mt + ch / 2;
+  h += '<text x="13" y="' + midY + '" text-anchor="middle" fill="#666" font-size="10" font-family="sans-serif" transform="rotate(-90,13,' + midY + ')">Odometer (km)</text>';
+  // Trend line (delivery to latest)
+  var first = pts[0], last = pts[pts.length - 1];
+  h += '<line x1="' + px(first.date) + '" y1="' + py(first.km) + '" x2="' + px(last.date) + '" y2="' + py(last.km) + '" stroke="#444" stroke-width="1.5" stroke-dasharray="5,4"/>';
+  // Data polyline
+  var linePts = pts.map(function(p) { return px(p.date).toFixed(1) + ',' + py(p.km).toFixed(1); }).join(' ');
+  h += '<polyline points="' + linePts + '" fill="none" stroke="#c0272d" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  // Data points
+  pts.forEach(function(p) {
+    var label = p.date.toLocaleDateString('en-AU', {month:'short', year:'numeric'}) + ' — ' + p.km.toLocaleString('en-AU') + ' km';
+    h += '<circle cx="' + px(p.date).toFixed(1) + '" cy="' + py(p.km).toFixed(1) + '" r="3.5" fill="#c0272d" stroke="#0f0f0f" stroke-width="1.5"><title>' + label + '</title></circle>';
+  });
+  svg.innerHTML = h;
+}
+function openKmChart() {
+  drawKmChart();
+  document.getElementById('km-chart-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeKmChart() {
+  document.getElementById('km-chart-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
 // Registration
 function editRego() {
   var display = document.getElementById('rego-display');
@@ -1158,6 +1257,8 @@ window.onload = function() {
   loadLastWashed();
   loadRego();
   buildInsuranceTab();
+  loadAvgKm();
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeKmChart(); });
 };
 </script>
 </body>
