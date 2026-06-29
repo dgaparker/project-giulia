@@ -943,16 +943,11 @@ function saveRego() {
   loadRego();
 }
 function loadRego() {
-  var stored = localStorage.getItem('giulia-rego-expiry');
+  var stored = localStorage.getItem('giulia-rego-expiry') || '2026-08-04';
   var card = document.getElementById('rego-card');
   var dateEl = document.getElementById('rego-date');
   var daysEl = document.getElementById('rego-days');
   card.classList.remove('green', 'amber', 'accent');
-  if (!stored) {
-    dateEl.textContent = '—';
-    daysEl.textContent = 'Click to set date';
-    return;
-  }
   dateEl.textContent = fmtDate(stored);
   var today = new Date(); today.setHours(0,0,0,0);
   var expiry = new Date(stored); expiry.setHours(0,0,0,0);
